@@ -29,6 +29,23 @@ interface TransactionDao {
     @Query("SELECT COUNT(*) FROM transactions WHERE categoryId = :categoryId")
     suspend fun countByCategoryId(categoryId: Long): Int
 
+    @Query(
+        """
+        SELECT * FROM transactions
+        WHERE type = 'CREDIT_PAYMENT'
+          AND amount = :amount
+          AND date = :paymentDate
+          AND note = :note
+        ORDER BY id DESC
+        LIMIT 1
+        """
+    )
+    suspend fun findCreditPaymentTransactionNow(
+        amount: Double,
+        paymentDate: Long,
+        note: String
+    ): TransactionEntity?
+
     @Query("SELECT * FROM transactions ORDER BY date DESC")
     fun getAll(): Flow<List<TransactionEntity>>
 
@@ -38,6 +55,13 @@ interface TransactionDao {
     @Query("SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE type = 'INCOME' AND date BETWEEN :startTimestamp AND :endTimestamp")
     fun getMonthlyIncomeSum(startTimestamp: Long, endTimestamp: Long): Flow<Double>
 
-    @Query("SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE type = 'EXPENSE' AND date BETWEEN :startTimestamp AND :endTimestamp")
+    @Query(
+        """
+        SELECT COALESCE(SUM(amount), 0)
+        FROM transactions
+        WHERE (type = 'EXPENSE' OR type = 'CREDIT_PAYMENT')
+          AND date BETWEEN :startTimestamp AND :endTimestamp
+        """
+    )
     fun getMonthlyExpenseSum(startTimestamp: Long, endTimestamp: Long): Flow<Double>
 }

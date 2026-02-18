@@ -252,19 +252,23 @@ fun FinanceNavGraph(
                     )
                     val formState by creditViewModel.addCreditFormState.collectAsState()
                     val isInstallmentPlan = creditViewModel.isInstallmentPlan(formState.creditType)
+                    val isCreditLimit = creditViewModel.isCreditLimit(formState.creditType)
                     val installmentPaymentPreview = creditViewModel.installmentPaymentPreview()
 
                     AddCreditScreen(
                         formState = formState,
                         isInstallmentPlan = isInstallmentPlan,
+                        isCreditLimit = isCreditLimit,
                         installmentPaymentPreview = installmentPaymentPreview,
                         onNameChange = creditViewModel::onNameChanged,
                         onCreditTypeChange = creditViewModel::onCreditTypeChanged,
                         onTotalAmountChange = creditViewModel::onTotalAmountChanged,
                         onInstallmentCountChange = creditViewModel::onInstallmentCountChanged,
-                        onPaymentDueDateChange = creditViewModel::onPaymentDueDateChanged,
+                        onPaymentDueDayChange = creditViewModel::onPaymentDueDayChanged,
                         onMonthlyPaymentChange = creditViewModel::onMonthlyPaymentChanged,
                         onInterestRateChange = creditViewModel::onInterestRateChanged,
+                        onNoteChange = creditViewModel::onNoteChanged,
+                        onAlreadyPaidAmountChange = creditViewModel::onAlreadyPaidAmountChanged,
                         onSave = {
                             creditViewModel.saveCredit {
                                 navController.popBackStack()

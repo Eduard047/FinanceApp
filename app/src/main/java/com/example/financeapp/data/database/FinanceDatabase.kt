@@ -23,7 +23,7 @@ import com.example.financeapp.data.entity.TransactionEntity
         CreditAccountEntity::class,
         CreditPaymentEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 @TypeConverters(FinanceTypeConverters::class)
@@ -43,6 +43,12 @@ abstract class FinanceDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE credit_accounts ADD COLUMN note TEXT")
+            }
+        }
+
         @Volatile
         private var INSTANCE: FinanceDatabase? = null
 
@@ -53,7 +59,7 @@ abstract class FinanceDatabase : RoomDatabase() {
                     FinanceDatabase::class.java,
                     "finance_database"
                 )
-                    .addMigrations(MIGRATION_1_2)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .build()
                 INSTANCE = instance
                 instance

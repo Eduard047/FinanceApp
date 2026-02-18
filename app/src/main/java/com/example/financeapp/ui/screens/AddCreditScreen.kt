@@ -1,6 +1,7 @@
 ﻿package com.example.financeapp.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -34,19 +35,23 @@ import com.example.financeapp.ui.viewmodel.AddCreditFormState
 fun AddCreditScreen(
     formState: AddCreditFormState,
     isInstallmentPlan: Boolean,
+    isCreditLimit: Boolean,
     installmentPaymentPreview: Double?,
     onNameChange: (String) -> Unit,
     onCreditTypeChange: (CreditType) -> Unit,
     onTotalAmountChange: (String) -> Unit,
     onInstallmentCountChange: (String) -> Unit,
-    onPaymentDueDateChange: (String) -> Unit,
+    onPaymentDueDayChange: (Int) -> Unit,
     onMonthlyPaymentChange: (String) -> Unit,
     onInterestRateChange: (String) -> Unit,
+    onNoteChange: (String) -> Unit,
+    onAlreadyPaidAmountChange: (String) -> Unit,
     onSave: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var typeMenuExpanded by remember { mutableStateOf(false) }
+    var dueDayMenuExpanded by remember { mutableStateOf(false) }
 
     FinanceScreenBackground(modifier = modifier.fillMaxSize()) {
         Column(
@@ -86,99 +91,150 @@ fun AddCreditScreen(
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    OutlinedButton(
-                        onClick = { typeMenuExpanded = true },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(text = "${tr("Тип", "Type")}: ${creditTypeLabel(formState.creditType)}")
-                    }
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        OutlinedButton(
+                            onClick = { typeMenuExpanded = true },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(text = "${tr("Тип", "Type")}: ${creditTypeLabel(formState.creditType)}")
+                        }
 
-                    DropdownMenu(
-                        expanded = typeMenuExpanded,
-                        onDismissRequest = { typeMenuExpanded = false }
-                    ) {
-                        CreditType.entries.forEach { type ->
-                            DropdownMenuItem(
-                                text = { Text(text = creditTypeLabel(type)) },
-                                onClick = {
-                                    onCreditTypeChange(type)
-                                    typeMenuExpanded = false
-                                }
-                            )
+                        DropdownMenu(
+                            expanded = typeMenuExpanded,
+                            onDismissRequest = { typeMenuExpanded = false }
+                        ) {
+                            CreditType.entries.forEach { type ->
+                                DropdownMenuItem(
+                                    text = { Text(text = creditTypeLabel(type)) },
+                                    onClick = {
+                                        onCreditTypeChange(type)
+                                        typeMenuExpanded = false
+                                    }
+                                )
+                            }
                         }
                     }
 
                     OutlinedTextField(
                         value = formState.totalAmount,
                         onValueChange = onTotalAmountChange,
-                        label = { Text(text = tr("Загальна сума", "Total amount")) },
+                        label = {
+                            Text(
+                                text = if (isCreditLimit) {
+                                    tr("Сума кредитного ліміту", "Credit limit amount")
+                                } else {
+                                    tr("Загальна сума", "Total amount")
+                                }
+                            )
+                        },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    if (isInstallmentPlan) {
+                    if (isCreditLimit) {
                         OutlinedTextField(
-                            value = formState.installmentCount,
-                            onValueChange = onInstallmentCountChange,
-                            label = { Text(text = tr("Кількість платежів", "Number of payments")) },
+                            value = formState.alreadyPaidAmount,
+                            onValueChange = onAlreadyPaidAmountChange,
+                            label = { Text(text = tr("Вже внесено", "Already paid")) },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
                         )
 
                         OutlinedTextField(
-                            value = formState.paymentDueDateInput,
-                            onValueChange = onPaymentDueDateChange,
-                            label = { Text(text = tr("Дата платежу до (дд.мм.рррр)", "Payment due date (dd.MM.yyyy)")) },
-                            singleLine = true,
+                            value = formState.note,
+                            onValueChange = onNoteChange,
+                            label = { Text(text = tr("Нотатка (необов'язково)", "Note (optional)")) },
                             modifier = Modifier.fillMaxWidth()
                         )
-
-                        ElevatedCard(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.elevatedCardColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                    } else {
+                        if (isInstallmentPlan) {
+                            OutlinedTextField(
+                                value = formState.installmentCount,
+                                onValueChange = onInstallmentCountChange,
+                                label = { Text(text = tr("Кількість платежів", "Number of payments")) },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
                             )
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(12.dp),
-                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                        } else {
+                            OutlinedTextField(
+                                value = formState.monthlyPayment,
+                                onValueChange = onMonthlyPaymentChange,
+                                label = { Text(text = tr("Щомісячний платіж (необов'язково)", "Monthly payment (optional)")) },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            OutlinedButton(
+                                onClick = { dueDayMenuExpanded = true },
+                                modifier = Modifier.fillMaxWidth()
                             ) {
+                                val selectedDay = formState.paymentDueDay
                                 Text(
-                                    text = tr("Сума одного платежу", "Amount per payment"),
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Text(
-                                    text = installmentPaymentPreview?.let { formatCurrency(it) } ?: "-",
-                                    style = MaterialTheme.typography.titleMedium
+                                    text = if (selectedDay == null) {
+                                        tr("Оберіть день платежу", "Choose payment day")
+                                    } else {
+                                        tr("До $selectedDay числа", "Due on day $selectedDay")
+                                    }
                                 )
                             }
+
+                            DropdownMenu(
+                                expanded = dueDayMenuExpanded,
+                                onDismissRequest = { dueDayMenuExpanded = false }
+                            ) {
+                                (1..31).forEach { day ->
+                                    DropdownMenuItem(
+                                        text = { Text(text = day.toString()) },
+                                        onClick = {
+                                            onPaymentDueDayChange(day)
+                                            dueDayMenuExpanded = false
+                                        }
+                                    )
+                                }
+                            }
                         }
-                    } else {
+
+                        if (isInstallmentPlan) {
+                            ElevatedCard(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.elevatedCardColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                                )
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        text = tr("Сума одного платежу", "Amount per payment"),
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        text = installmentPaymentPreview?.let { formatCurrency(it) } ?: "-",
+                                        style = MaterialTheme.typography.titleMedium
+                                    )
+                                }
+                            }
+                        }
+
                         OutlinedTextField(
-                            value = formState.monthlyPayment,
-                            onValueChange = onMonthlyPaymentChange,
-                            label = { Text(text = tr("Щомісячний платіж (необов'язково)", "Monthly payment (optional)")) },
+                            value = formState.interestRate,
+                            onValueChange = onInterestRateChange,
+                            label = { Text(text = tr("Відсоткова ставка % (необов'язково)", "Interest rate % (optional)")) },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
                         )
 
                         OutlinedTextField(
-                            value = formState.paymentDueDateInput,
-                            onValueChange = onPaymentDueDateChange,
-                            label = { Text(text = tr("Дата наступного платежу (дд.мм.рррр)", "Next payment date (dd.MM.yyyy)")) },
-                            singleLine = true,
+                            value = formState.note,
+                            onValueChange = onNoteChange,
+                            label = { Text(text = tr("Нотатка (необов'язково)", "Note (optional)")) },
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
-
-                    OutlinedTextField(
-                        value = formState.interestRate,
-                        onValueChange = onInterestRateChange,
-                        label = { Text(text = tr("Відсоткова ставка % (необов'язково)", "Interest rate % (optional)")) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
 
                     formState.errorMessage?.let { error ->
                         Text(text = localizedCreditMessage(error), color = MaterialTheme.colorScheme.error)
@@ -199,10 +255,16 @@ private fun localizedCreditMessage(message: String): String {
         "Введіть назву кредиту" -> tr("Введіть назву кредиту", "Enter credit name")
         "Введіть коректну загальну суму" -> tr("Введіть коректну загальну суму", "Enter a valid total amount")
         "Вкажіть кількість платежів" -> tr("Вкажіть кількість платежів", "Enter number of payments")
-        "Дата має бути у форматі дд.мм.рррр" -> tr("Дата має бути у форматі дд.мм.рррр", "Date must match dd.MM.yyyy")
-        "Вкажіть дату наступного платежу" -> tr("Вкажіть дату наступного платежу", "Enter next payment date")
+        "Вкажіть день платежу" -> tr("Вкажіть день платежу", "Choose payment day")
         "Щомісячний платіж має бути числом" -> tr("Щомісячний платіж має бути числом", "Monthly payment must be numeric")
         "Відсоткова ставка має бути числом" -> tr("Відсоткова ставка має бути числом", "Interest rate must be numeric")
+        "Вже внесено має бути числом" -> tr("Вже внесено має бути числом", "Already paid must be numeric")
+        "Вже внесено не може бути від'ємним" -> tr("Вже внесено не може бути від'ємним", "Already paid cannot be negative")
+        "Вже внесено не може перевищувати загальну суму" -> tr(
+            "Вже внесено не може перевищувати загальну суму",
+            "Already paid cannot exceed total amount"
+        )
+
         else -> message
     }
 }

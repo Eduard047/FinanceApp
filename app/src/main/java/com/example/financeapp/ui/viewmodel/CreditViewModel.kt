@@ -7,7 +7,6 @@ import com.example.financeapp.data.entity.CreditAccountEntity
 import com.example.financeapp.data.entity.CreditPaymentEntity
 import com.example.financeapp.data.entity.CreditType
 import com.example.financeapp.data.repository.CreditRepository
-import com.example.financeapp.domain.parseDateInput
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -16,15 +15,19 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.Calendar
+import kotlin.math.min
 
 data class AddCreditFormState(
     val name: String = "",
     val creditType: CreditType = CreditType.INSTALLMENT,
     val totalAmount: String = "",
     val installmentCount: String = "",
-    val paymentDueDateInput: String = "",
+    val paymentDueDay: Int? = null,
     val monthlyPayment: String = "",
     val interestRate: String = "",
+    val note: String = "",
+    val alreadyPaidAmount: String = "",
     val errorMessage: String? = null
 )
 
@@ -51,6 +54,10 @@ class CreditViewModel(
         return type == CreditType.INSTALLMENT || type == CreditType.PAY_IN_PARTS
     }
 
+    fun isCreditLimit(type: CreditType): Boolean {
+        return type == CreditType.CREDIT_LIMIT
+    }
+
     fun installmentPaymentPreview(): Double? {
         val form = _addCreditFormState.value
         val totalAmount = form.totalAmount.toDoubleOrNull()
@@ -71,6 +78,10 @@ class CreditViewModel(
         _addCreditFormState.update {
             it.copy(
                 creditType = value,
+                paymentDueDay = if (value == CreditType.CREDIT_LIMIT) null else it.paymentDueDay,
+                installmentCount = if (value == CreditType.CREDIT_LIMIT) "" else it.installmentCount,
+                monthlyPayment = if (value == CreditType.CREDIT_LIMIT) "" else it.monthlyPayment,
+                interestRate = if (value == CreditType.CREDIT_LIMIT) "" else it.interestRate,
                 errorMessage = null
             )
         }
@@ -84,8 +95,8 @@ class CreditViewModel(
         _addCreditFormState.update { it.copy(installmentCount = value, errorMessage = null) }
     }
 
-    fun onPaymentDueDateChanged(value: String) {
-        _addCreditFormState.update { it.copy(paymentDueDateInput = value, errorMessage = null) }
+    fun onPaymentDueDayChanged(day: Int) {
+        _addCreditFormState.update { it.copy(paymentDueDay = day, errorMessage = null) }
     }
 
     fun onMonthlyPaymentChanged(value: String) {
@@ -96,10 +107,19 @@ class CreditViewModel(
         _addCreditFormState.update { it.copy(interestRate = value, errorMessage = null) }
     }
 
+    fun onNoteChanged(value: String) {
+        _addCreditFormState.update { it.copy(note = value, errorMessage = null) }
+    }
+
+    fun onAlreadyPaidAmountChanged(value: String) {
+        _addCreditFormState.update { it.copy(alreadyPaidAmount = value, errorMessage = null) }
+    }
+
     fun saveCredit(onSaved: () -> Unit = {}) {
         val form = _addCreditFormState.value
         val totalAmount = form.totalAmount.toDoubleOrNull()
         val installmentPlan = isInstallmentPlan(form.creditType)
+        val creditLimit = isCreditLimit(form.creditType)
 
         if (form.name.isBlank()) {
             _addCreditFormState.update { it.copy(errorMessage = "Введіть назву кредиту") }
@@ -117,41 +137,61 @@ class CreditViewModel(
             return
         }
 
-        val paymentDueDate = parseDateInput(form.paymentDueDateInput)
-        if (form.paymentDueDateInput.isNotBlank() && paymentDueDate == null) {
-            _addCreditFormState.update { it.copy(errorMessage = "Дата має бути у форматі дд.мм.рррр") }
-            return
-        }
-
-        if (installmentPlan && paymentDueDate == null) {
-            _addCreditFormState.update { it.copy(errorMessage = "Вкажіть дату наступного платежу") }
-            return
-        }
-
-        val monthlyPayment = if (installmentPlan) {
-            installmentPaymentPreview()
+        val paymentDueDate = if (creditLimit) {
+            null
         } else {
-            if (form.monthlyPayment.isBlank()) {
-                null
-            } else {
-                form.monthlyPayment.toDoubleOrNull()
+            val dueDay = form.paymentDueDay
+            if (dueDay == null || dueDay !in 1..31) {
+                _addCreditFormState.update { it.copy(errorMessage = "Вкажіть день платежу") }
+                return
             }
+            nextDueDateFromDay(dueDay)
         }
 
-        if (!installmentPlan && form.monthlyPayment.isNotBlank() && monthlyPayment == null) {
+        val monthlyPayment = when {
+            creditLimit -> null
+            installmentPlan -> installmentPaymentPreview()
+            form.monthlyPayment.isBlank() -> null
+            else -> form.monthlyPayment.toDoubleOrNull()
+        }
+
+        if (!creditLimit && !installmentPlan && form.monthlyPayment.isNotBlank() && monthlyPayment == null) {
             _addCreditFormState.update { it.copy(errorMessage = "Щомісячний платіж має бути числом") }
             return
         }
 
-        val interestRate = if (form.interestRate.isBlank()) {
+        val interestRate = if (creditLimit || form.interestRate.isBlank()) {
             null
         } else {
             form.interestRate.toDoubleOrNull()
         }
 
-        if (form.interestRate.isNotBlank() && interestRate == null) {
+        if (!creditLimit && form.interestRate.isNotBlank() && interestRate == null) {
             _addCreditFormState.update { it.copy(errorMessage = "Відсоткова ставка має бути числом") }
             return
+        }
+
+        val initialPaidAmount = if (creditLimit) {
+            if (form.alreadyPaidAmount.isBlank()) {
+                0.0
+            } else {
+                val parsed = form.alreadyPaidAmount.toDoubleOrNull()
+                if (parsed == null) {
+                    _addCreditFormState.update { it.copy(errorMessage = "Вже внесено має бути числом") }
+                    return
+                }
+                if (parsed < 0.0) {
+                    _addCreditFormState.update { it.copy(errorMessage = "Вже внесено не може бути від'ємним") }
+                    return
+                }
+                if (parsed > totalAmount) {
+                    _addCreditFormState.update { it.copy(errorMessage = "Вже внесено не може перевищувати загальну суму") }
+                    return
+                }
+                parsed
+            }
+        } else {
+            null
         }
 
         viewModelScope.launch {
@@ -163,6 +203,8 @@ class CreditViewModel(
                 installmentCount = if (installmentPlan) installmentCount else null,
                 paymentDueDate = paymentDueDate,
                 interestRate = interestRate,
+                note = form.note.trim().ifBlank { null },
+                initialPaidAmount = initialPaidAmount,
                 startDate = System.currentTimeMillis(),
                 endDate = null
             )
@@ -202,6 +244,24 @@ class CreditViewModel(
         viewModelScope.launch {
             creditRepository.undoLastPayment(creditId)
         }
+    }
+
+    private fun nextDueDateFromDay(dayOfMonth: Int): Long {
+        val calendar = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+
+        val todayDay = calendar.get(Calendar.DAY_OF_MONTH)
+        if (todayDay > dayOfMonth) {
+            calendar.add(Calendar.MONTH, 1)
+        }
+
+        val maxDay = calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
+        calendar.set(Calendar.DAY_OF_MONTH, min(dayOfMonth, maxDay))
+        return calendar.timeInMillis
     }
 }
 

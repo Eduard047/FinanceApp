@@ -1,17 +1,25 @@
 package com.example.financeapp.data.repository
 
 import androidx.room.withTransaction
+import com.example.financeapp.data.dao.CategoryDao
 import com.example.financeapp.data.dao.CreditDao
 import com.example.financeapp.data.dao.CreditPaymentDao
+import com.example.financeapp.data.dao.TransactionDao
 import com.example.financeapp.data.database.FinanceDatabase
+import com.example.financeapp.data.entity.CategoryEntity
+import com.example.financeapp.data.entity.CategoryType
 import com.example.financeapp.data.entity.CreditAccountEntity
 import com.example.financeapp.data.entity.CreditPaymentEntity
 import com.example.financeapp.data.entity.CreditType
+import com.example.financeapp.data.entity.TransactionEntity
+import com.example.financeapp.data.entity.TransactionType
 import kotlinx.coroutines.flow.Flow
 import java.util.Calendar
 
 class CreditRepository(
     private val database: FinanceDatabase,
+    private val categoryDao: CategoryDao,
+    private val transactionDao: TransactionDao,
     private val creditDao: CreditDao,
     private val creditPaymentDao: CreditPaymentDao
 ) {
@@ -39,13 +47,23 @@ class CreditRepository(
         installmentCount: Int?,
         paymentDueDate: Long?,
         interestRate: Double?,
+        note: String?,
+        initialPaidAmount: Double?,
         startDate: Long,
         endDate: Long?
     ) {
         val isInstallment = creditType == CreditType.INSTALLMENT || creditType == CreditType.PAY_IN_PARTS
+        val isCreditLimit = creditType == CreditType.CREDIT_LIMIT
         val normalizedInstallmentCount = if (isInstallment) installmentCount else null
+        val normalizedInitialPaidAmount = if (isCreditLimit) {
+            (initialPaidAmount ?: 0.0).coerceIn(0.0, totalAmount)
+        } else {
+            0.0
+        }
+        val normalizedRemainingAmount = (totalAmount - normalizedInitialPaidAmount).coerceAtLeast(0.0)
 
         val normalizedMonthlyPayment = when {
+            isCreditLimit -> null
             isInstallment && normalizedInstallmentCount != null && normalizedInstallmentCount > 0 -> {
                 totalAmount / normalizedInstallmentCount
             }
@@ -53,21 +71,32 @@ class CreditRepository(
             else -> monthlyPayment
         }
 
-        creditDao.insert(
+        val insertedCreditId = creditDao.insert(
             CreditAccountEntity(
                 name = name,
                 creditType = creditType,
                 totalAmount = totalAmount,
-                remainingAmount = totalAmount,
+                remainingAmount = normalizedRemainingAmount,
                 monthlyPayment = normalizedMonthlyPayment,
-                interestRate = interestRate,
+                interestRate = if (isCreditLimit) null else interestRate,
                 startDate = startDate,
                 endDate = endDate,
                 installmentCount = normalizedInstallmentCount,
                 paidInstallments = 0,
-                paymentDueDate = paymentDueDate
+                paymentDueDate = if (isCreditLimit) null else paymentDueDate,
+                note = note
             )
         )
+
+        if (isCreditLimit && normalizedInitialPaidAmount > 0.0) {
+            creditPaymentDao.insert(
+                CreditPaymentEntity(
+                    creditAccountId = insertedCreditId,
+                    amount = normalizedInitialPaidAmount,
+                    paymentDate = startDate
+                )
+            )
+        }
     }
 
     suspend fun addPayment(
@@ -97,6 +126,14 @@ class CreditRepository(
                     paymentDueDate = if (updatedRemaining <= 0.0) null else credit.paymentDueDate
                 )
             )
+
+            if (credit.creditType != CreditType.CREDIT_LIMIT) {
+                addExpenseTransactionForCreditPayment(
+                    credit = credit,
+                    paymentAmount = amount,
+                    paymentDate = paymentDate
+                )
+            }
         }
     }
 
@@ -146,6 +183,12 @@ class CreditRepository(
                     paymentDueDate = updatedDueDate
                 )
             )
+
+            addExpenseTransactionForCreditPayment(
+                credit = credit,
+                paymentAmount = paymentAmount,
+                paymentDate = paymentDate
+            )
         }
     }
 
@@ -155,6 +198,14 @@ class CreditRepository(
         database.withTransaction {
             val credit = creditDao.getByIdNow(creditId) ?: return@withTransaction
             val lastPayment = creditPaymentDao.getLatestForCreditNow(creditId) ?: return@withTransaction
+
+            if (credit.creditType != CreditType.CREDIT_LIMIT) {
+                removeExpenseTransactionForCreditPayment(
+                    credit = credit,
+                    paymentAmount = lastPayment.amount,
+                    paymentDate = lastPayment.paymentDate
+                )
+            }
 
             creditPaymentDao.deleteById(lastPayment.id)
 
@@ -211,5 +262,54 @@ class CreditRepository(
         val calendar = Calendar.getInstance().apply { timeInMillis = timestamp }
         calendar.add(Calendar.MONTH, -1)
         return calendar.timeInMillis
+    }
+
+    private suspend fun ensureCreditPaymentCategoryId(): Long {
+        val existing = categoryDao.getAllNow().firstOrNull { it.type == CategoryType.CREDIT }
+        if (existing != null) {
+            return existing.id
+        }
+
+        return categoryDao.insert(
+            CategoryEntity(
+                name = "Кредитні платежі",
+                type = CategoryType.CREDIT
+            )
+        )
+    }
+
+    private suspend fun addExpenseTransactionForCreditPayment(
+        credit: CreditAccountEntity,
+        paymentAmount: Double,
+        paymentDate: Long
+    ) {
+        val categoryId = ensureCreditPaymentCategoryId()
+        transactionDao.insert(
+            TransactionEntity(
+                amount = paymentAmount,
+                date = paymentDate,
+                categoryId = categoryId,
+                type = TransactionType.CREDIT_PAYMENT,
+                note = paymentNoteForCredit(credit.name)
+            )
+        )
+    }
+
+    private suspend fun removeExpenseTransactionForCreditPayment(
+        credit: CreditAccountEntity,
+        paymentAmount: Double,
+        paymentDate: Long
+    ) {
+        val transaction = transactionDao.findCreditPaymentTransactionNow(
+            amount = paymentAmount,
+            paymentDate = paymentDate,
+            note = paymentNoteForCredit(credit.name)
+        ) ?: return
+
+        transactionDao.deleteById(transaction.id)
+    }
+
+    private fun paymentNoteForCredit(creditName: String): String {
+        return "Платіж за кредитом: $creditName"
     }
 }

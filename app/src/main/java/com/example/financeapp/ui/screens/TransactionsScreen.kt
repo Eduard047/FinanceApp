@@ -50,7 +50,7 @@ fun TransactionsScreen(
         .filter { it.type == TransactionType.INCOME }
         .sumOf { it.amount }
     val expenseTotal = transactions
-        .filter { it.type == TransactionType.EXPENSE }
+        .filter { it.type == TransactionType.EXPENSE || it.type == TransactionType.CREDIT_PAYMENT }
         .sumOf { it.amount }
 
     LaunchedEffect(Unit) {

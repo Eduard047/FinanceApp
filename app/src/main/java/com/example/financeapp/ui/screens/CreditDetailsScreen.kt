@@ -71,7 +71,9 @@ fun CreditDetailsScreen(
         }
 
         val isInstallmentPlan = credit.creditType == CreditType.INSTALLMENT || credit.creditType == CreditType.PAY_IN_PARTS
+        val isCreditLimit = credit.creditType == CreditType.CREDIT_LIMIT
         val totalInstallments = credit.installmentCount ?: 0
+        val paidAmount = (credit.totalAmount - credit.remainingAmount).coerceAtLeast(0.0)
 
         val paidRatio = if (credit.totalAmount <= 0.0) {
             0f
@@ -129,8 +131,14 @@ fun CreditDetailsScreen(
                         }
 
                         Text(text = "${tr("Загалом", "Total")}: ${formatCurrency(credit.totalAmount)}")
+                        if (isCreditLimit) {
+                            Text(text = "${tr("Внесено", "Paid manually")}: ${formatCurrency(paidAmount)}")
+                        }
                         credit.monthlyPayment?.let {
                             Text(text = "${tr("Платіж", "Payment")}: ${formatCurrency(it)}")
+                        }
+                        credit.note?.takeIf { it.isNotBlank() }?.let {
+                            Text(text = "${tr("Нотатка", "Note")}: $it")
                         }
 
                         if (isInstallmentPlan && totalInstallments > 0) {

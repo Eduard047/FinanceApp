@@ -31,6 +31,8 @@ class MainActivity : ComponentActivity() {
     private val creditRepository: CreditRepository by lazy {
         CreditRepository(
             database = database,
+            categoryDao = database.categoryDao(),
+            transactionDao = database.transactionDao(),
             creditDao = database.creditDao(),
             creditPaymentDao = database.creditPaymentDao()
         )

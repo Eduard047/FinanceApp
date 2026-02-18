@@ -25,5 +25,6 @@ data class CreditAccountEntity(
     val endDate: Long?,
     val installmentCount: Int? = null,
     val paidInstallments: Int = 0,
-    val paymentDueDate: Long? = null
+    val paymentDueDate: Long? = null,
+    val note: String? = null
 )
