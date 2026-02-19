@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -74,6 +75,8 @@ fun CreditDetailsScreen(
         val isCreditLimit = credit.creditType == CreditType.CREDIT_LIMIT
         val totalInstallments = credit.installmentCount ?: 0
         val paidAmount = (credit.totalAmount - credit.remainingAmount).coerceAtLeast(0.0)
+        val canMarkNextInstallment =
+            (totalInstallments == 0 || credit.paidInstallments < totalInstallments) && credit.remainingAmount > 0.0
 
         val paidRatio = if (credit.totalAmount <= 0.0) {
             0f
@@ -83,223 +86,239 @@ fun CreditDetailsScreen(
                 .toFloat()
         }
 
-        val allMarkedMessage = tr("Усі платежі вже відмічені", "All installments are already marked")
         val noPaymentsToUndoMessage = tr("Немає платежів для скасування", "No payments to undo")
         val invalidAmountMessage = tr("Введіть коректну суму", "Enter a valid amount")
 
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 16.dp, vertical = 14.dp),
+            contentPadding = PaddingValues(bottom = 20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                TextButton(onClick = onBack) {
-                    Text(text = tr("Назад", "Back"))
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    TextButton(onClick = onBack) {
+                        Text(text = tr("Назад", "Back"))
+                    }
+                    SoftBadge(text = tr("деталі", "details"))
                 }
-                SoftBadge(text = tr("деталі", "details"))
             }
 
-            Text(text = credit.name, style = MaterialTheme.typography.headlineMedium)
+            item {
+                Text(text = credit.name, style = MaterialTheme.typography.headlineMedium)
+            }
 
-            AnimatedVisibility(
-                visible = reveal,
-                enter = fadeIn(tween(420)) + slideInVertically(tween(420), initialOffsetY = { it / 6 })
-            ) {
-                ElevatedCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.elevatedCardColors(
-                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
-                    )
+            item {
+                AnimatedVisibility(
+                    visible = reveal,
+                    enter = fadeIn(tween(420)) + slideInVertically(tween(420), initialOffsetY = { it / 6 })
                 ) {
-                    Column(
-                        modifier = Modifier.padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ElevatedCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.elevatedCardColors(
+                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+                        )
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                        Column(
+                            modifier = Modifier.padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            SoftBadge(text = creditTypeLabel(credit.creditType))
-                            Text(
-                                text = "${tr("Залишок", "Remaining")} ${formatCurrency(credit.remainingAmount)}",
-                                style = MaterialTheme.typography.labelLarge
-                            )
-                        }
-
-                        Text(text = "${tr("Загалом", "Total")}: ${formatCurrency(credit.totalAmount)}")
-                        if (isCreditLimit) {
-                            Text(text = "${tr("Внесено", "Paid manually")}: ${formatCurrency(paidAmount)}")
-                        }
-                        credit.monthlyPayment?.let {
-                            Text(text = "${tr("Платіж", "Payment")}: ${formatCurrency(it)}")
-                        }
-                        credit.note?.takeIf { it.isNotBlank() }?.let {
-                            Text(text = "${tr("Нотатка", "Note")}: $it")
-                        }
-
-                        if (isInstallmentPlan && totalInstallments > 0) {
-                            Text(text = tr("Сплачено платежів: ${credit.paidInstallments} з $totalInstallments", "Paid installments: ${credit.paidInstallments} of $totalInstallments"))
-                            repeat(totalInstallments) { index ->
-                                val paid = index < credit.paidInstallments
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                SoftBadge(text = creditTypeLabel(credit.creditType))
                                 Text(
-                                    text = tr(
-                                        "Платіж ${index + 1}: ${if (paid) "сплачено" else "очікує"}",
-                                        "Payment ${index + 1}: ${if (paid) "paid" else "pending"}"
-                                    ),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = if (paid) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                    text = "${tr("Залишок", "Remaining")} ${formatCurrency(credit.remainingAmount)}",
+                                    style = MaterialTheme.typography.labelLarge
                                 )
                             }
-                        }
 
-                        credit.paymentDueDate?.let {
-                            Text(text = "${tr("Сплатити до", "Pay by")}: ${formatDate(it)}")
-                        }
+                            Text(text = "${tr("Загалом", "Total")}: ${formatCurrency(credit.totalAmount)}")
+                            if (isCreditLimit) {
+                                Text(text = "${tr("Внесено", "Paid manually")}: ${formatCurrency(paidAmount)}")
+                            }
+                            credit.monthlyPayment?.let {
+                                Text(text = "${tr("Платіж", "Payment")}: ${formatCurrency(it)}")
+                            }
+                            credit.note?.takeIf { it.isNotBlank() }?.let {
+                                Text(text = "${tr("Нотатка", "Note")}: $it")
+                            }
 
-                        credit.interestRate?.let {
-                            Text(text = "${tr("Відсоткова ставка", "Interest rate")}: $it%")
+                            if (isInstallmentPlan && totalInstallments > 0) {
+                                Text(
+                                    text = tr(
+                                        "Сплачено платежів: ${credit.paidInstallments} з $totalInstallments",
+                                        "Paid installments: ${credit.paidInstallments} of $totalInstallments"
+                                    )
+                                )
+                                repeat(totalInstallments) { index ->
+                                    val paid = index < credit.paidInstallments
+                                    Text(
+                                        text = tr(
+                                            "Платіж ${index + 1}: ${if (paid) "сплачено" else "очікує"}",
+                                            "Payment ${index + 1}: ${if (paid) "paid" else "pending"}"
+                                        ),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = if (paid) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+
+                            credit.paymentDueDate?.let {
+                                Text(text = "${tr("Сплатити до", "Pay by")}: ${formatDate(it)}")
+                            }
+
+                            credit.interestRate?.let {
+                                Text(text = "${tr("Відсоткова ставка", "Interest rate")}: $it%")
+                            }
+                            LinearProgressIndicator(
+                                progress = { paidRatio },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Text(
+                                text = tr("Сплачено ${(paidRatio * 100).toInt()}%", "Paid ${(paidRatio * 100).toInt()}%"),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
-                        LinearProgressIndicator(
-                            progress = { paidRatio },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Text(
-                            text = tr("Сплачено ${(paidRatio * 100).toInt()}%", "Paid ${(paidRatio * 100).toInt()}%"),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
                     }
                 }
             }
 
-            if (isInstallmentPlan) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(
-                        onClick = {
-                            val canMark = totalInstallments == 0 || credit.paidInstallments < totalInstallments
-                            if (canMark && credit.remainingAmount > 0.0) {
+            item {
+                if (isInstallmentPlan) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = {
                                 onMarkInstallmentPaid()
                                 paymentError = null
-                            } else {
-                                paymentError = allMarkedMessage
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(text = tr("Позначити наступний платіж сплаченим", "Mark next installment as paid"))
-                    }
-
-                    OutlinedButton(
-                        onClick = {
-                            if (payments.isEmpty()) {
-                                paymentError = noPaymentsToUndoMessage
-                            } else {
-                                onUndoLastPayment()
-                                paymentError = null
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = payments.isNotEmpty()
-                    ) {
-                        Text(text = tr("Скасувати останній платіж", "Undo last payment"))
-                    }
-                }
-            } else {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedTextField(
-                            value = paymentAmount,
-                            onValueChange = {
-                                paymentAmount = it
-                                paymentError = null
                             },
-                            modifier = Modifier.weight(1f),
-                            label = { Text(text = tr("Сума платежу", "Payment amount")) },
-                            singleLine = true
-                        )
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = canMarkNextInstallment
+                        ) {
+                            Text(text = tr("Позначити наступний платіж сплаченим", "Mark next installment as paid"))
+                        }
 
-                        Button(onClick = {
-                            val saved = onAddPayment(paymentAmount)
-                            if (saved) {
-                                paymentAmount = ""
-                                paymentError = null
-                            } else {
-                                paymentError = invalidAmountMessage
-                            }
-                        }) {
-                            Text(text = tr("Додати", "Add"))
+                        OutlinedButton(
+                            onClick = {
+                                if (payments.isEmpty()) {
+                                    paymentError = noPaymentsToUndoMessage
+                                } else {
+                                    onUndoLastPayment()
+                                    paymentError = null
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = payments.isNotEmpty()
+                        ) {
+                            Text(text = tr("Скасувати останній платіж", "Undo last payment"))
                         }
                     }
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = paymentAmount,
+                                onValueChange = {
+                                    paymentAmount = it
+                                    paymentError = null
+                                },
+                                modifier = Modifier.weight(1f),
+                                label = { Text(text = tr("Сума платежу", "Payment amount")) },
+                                singleLine = true
+                            )
 
-                    OutlinedButton(
-                        onClick = {
-                            if (payments.isEmpty()) {
-                                paymentError = noPaymentsToUndoMessage
-                            } else {
-                                onUndoLastPayment()
-                                paymentError = null
+                            Button(onClick = {
+                                val saved = onAddPayment(paymentAmount)
+                                if (saved) {
+                                    paymentAmount = ""
+                                    paymentError = null
+                                } else {
+                                    paymentError = invalidAmountMessage
+                                }
+                            }) {
+                                Text(text = tr("Додати", "Add"))
                             }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = payments.isNotEmpty()
-                    ) {
-                        Text(text = tr("Скасувати останній платіж", "Undo last payment"))
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                if (payments.isEmpty()) {
+                                    paymentError = noPaymentsToUndoMessage
+                                } else {
+                                    onUndoLastPayment()
+                                    paymentError = null
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = payments.isNotEmpty()
+                        ) {
+                            Text(text = tr("Скасувати останній платіж", "Undo last payment"))
+                        }
                     }
                 }
             }
 
             paymentError?.let { error ->
-                Text(text = error, color = MaterialTheme.colorScheme.error)
+                item {
+                    Text(text = error, color = MaterialTheme.colorScheme.error)
+                }
             }
 
-            Text(text = tr("Історія платежів", "Payment history"), style = MaterialTheme.typography.titleMedium)
+            item {
+                Text(text = tr("Історія платежів", "Payment history"), style = MaterialTheme.typography.titleMedium)
+            }
 
             if (payments.isEmpty()) {
-                ElevatedCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.elevatedCardColors(
-                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
-                    )
-                ) {
-                    Text(
-                        text = tr("Платежів ще немає", "No payments yet"),
-                        modifier = Modifier.padding(12.dp),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                item {
+                    ElevatedCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.elevatedCardColors(
+                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+                        )
+                    ) {
+                        Text(
+                            text = tr("Платежів ще немає", "No payments yet"),
+                            modifier = Modifier.padding(12.dp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             } else {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    itemsIndexed(payments, key = { _, item -> item.id }) { index, payment ->
-                        AnimatedVisibility(
-                            visible = reveal,
-                            enter = fadeIn(tween(360, delayMillis = 100 + index * 40)) +
-                                slideInVertically(tween(360, delayMillis = 100 + index * 40), initialOffsetY = { it / 8 })
+                itemsIndexed(payments, key = { _, item -> item.id }) { index, payment ->
+                    AnimatedVisibility(
+                        visible = reveal,
+                        enter = fadeIn(tween(360, delayMillis = 100 + index * 40)) +
+                            slideInVertically(tween(360, delayMillis = 100 + index * 40), initialOffsetY = { it / 8 })
+                    ) {
+                        ElevatedCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.elevatedCardColors(
+                                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+                            )
                         ) {
-                            ElevatedCard(
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = CardDefaults.elevatedCardColors(
-                                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
-                                )
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                Column(
-                                    modifier = Modifier.padding(12.dp),
-                                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Text(
-                                        text = formatCurrency(payment.amount),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                    Text(
-                                        text = formatDate(payment.paymentDate),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
+                                Text(
+                                    text = formatCurrency(payment.amount),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = formatDate(payment.paymentDate),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         }
                     }

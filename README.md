@@ -22,6 +22,7 @@ A modern Android finance tracker built with **Kotlin**, **Jetpack Compose**, **M
 - Payment reminders using WorkManager notifications.
 - Currency: **UAH (hryvnia)**.
 - In-app language switch (**Ukrainian / English**) from the **top-right** menu (selection is persisted).
+- Refreshed modern visual style with Google Fonts (**Unbounded** + **Manrope**) and updated Material 3 color/shape tokens.
 
 ## Tech Stack
 

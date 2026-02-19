@@ -1,59 +1,74 @@
 package com.example.financeapp.ui.theme
 
+import androidx.compose.ui.text.font.Font
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.example.financeapp.R
+
+private val HeadlineFont = FontFamily(
+    Font(R.font.unbounded_variable, weight = FontWeight.SemiBold),
+    Font(R.font.unbounded_variable, weight = FontWeight.Bold),
+    Font(R.font.unbounded_variable, weight = FontWeight.ExtraBold)
+)
+
+private val BodyFont = FontFamily(
+    Font(R.font.manrope_variable, weight = FontWeight.Normal),
+    Font(R.font.manrope_variable, weight = FontWeight.Medium),
+    Font(R.font.manrope_variable, weight = FontWeight.SemiBold),
+    Font(R.font.manrope_variable, weight = FontWeight.Bold)
+)
 
 val Typography = Typography(
     headlineLarge = TextStyle(
-        fontFamily = FontFamily.Serif,
-        fontWeight = FontWeight.Bold,
+        fontFamily = HeadlineFont,
+        fontWeight = FontWeight.ExtraBold,
         fontSize = 34.sp,
         lineHeight = 40.sp,
-        letterSpacing = 0.sp
+        letterSpacing = (-0.4).sp
     ),
     headlineMedium = TextStyle(
-        fontFamily = FontFamily.Serif,
+        fontFamily = HeadlineFont,
         fontWeight = FontWeight.Bold,
-        fontSize = 28.sp,
-        lineHeight = 34.sp,
-        letterSpacing = 0.sp
+        fontSize = 30.sp,
+        lineHeight = 36.sp,
+        letterSpacing = (-0.25).sp
     ),
     titleLarge = TextStyle(
-        fontFamily = FontFamily.Serif,
+        fontFamily = BodyFont,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 22.sp,
+        fontSize = 23.sp,
         lineHeight = 28.sp,
-        letterSpacing = 0.sp
+        letterSpacing = 0.1.sp
     ),
     titleMedium = TextStyle(
-        fontFamily = FontFamily.Serif,
+        fontFamily = BodyFont,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 18.sp,
-        lineHeight = 24.sp,
-        letterSpacing = 0.15.sp
+        fontSize = 20.sp,
+        lineHeight = 26.sp,
+        letterSpacing = 0.sp
     ),
     bodyLarge = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontWeight = FontWeight.Normal,
+        fontFamily = BodyFont,
+        fontWeight = FontWeight.Medium,
         fontSize = 16.sp,
-        lineHeight = 23.sp,
-        letterSpacing = 0.5.sp
+        lineHeight = 24.sp,
+        letterSpacing = 0.1.sp
     ),
     bodyMedium = TextStyle(
-        fontFamily = FontFamily.SansSerif,
+        fontFamily = BodyFont,
         fontWeight = FontWeight.Normal,
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
-        letterSpacing = 0.25.sp
+        fontSize = 15.sp,
+        lineHeight = 22.sp,
+        letterSpacing = 0.1.sp
     ),
     labelLarge = TextStyle(
-        fontFamily = FontFamily.Monospace,
+        fontFamily = BodyFont,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 13.sp,
-        lineHeight = 16.sp,
-        letterSpacing = 0.35.sp
+        fontSize = 14.sp,
+        lineHeight = 18.sp,
+        letterSpacing = 0.2.sp
     )
 )

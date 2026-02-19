@@ -13,31 +13,48 @@ import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
     primary = Emerald80,
-    onPrimary = Color(0xFF003732),
-    secondary = AmberSun,
-    onSecondary = Color(0xFF3E2200),
-    tertiary = Coral,
-    background = Color(0xFF0D1A21),
-    onBackground = InkDark,
-    surface = Color(0xFF14232C),
+    onPrimary = Color(0xFF00373A),
+    primaryContainer = Color(0xFF005A5D),
+    onPrimaryContainer = Color(0xFFA5F5F4),
+    secondary = Color(0xFF9BCBFF),
+    onSecondary = Color(0xFF00315E),
+    secondaryContainer = Color(0xFF004883),
+    onSecondaryContainer = Color(0xFFD4E7FF),
+    tertiary = Color(0xFFFFB870),
+    onTertiary = Color(0xFF4C2800),
+    tertiaryContainer = Color(0xFF703A00),
+    onTertiaryContainer = Color(0xFFFFDDB4),
+    error = Coral,
+    background = Color(0xFF09171F),
+    onBackground = Color(0xFFD6E6ED),
+    surface = Color(0xFF10222B),
     onSurface = InkDark,
-    surfaceVariant = Color(0xFF253B47),
-    onSurfaceVariant = Color(0xFFBCD0D8)
+    surfaceVariant = Color(0xFF203945),
+    onSurfaceVariant = Color(0xFFB6CDD8),
+    outline = Color(0xFF5F7A86)
 )
 
 private val LightColorScheme = lightColorScheme(
     primary = Emerald40,
     onPrimary = Color.White,
+    primaryContainer = Color(0xFFB7F1F0),
+    onPrimaryContainer = Color(0xFF003739),
     secondary = OceanBlue,
     onSecondary = Color.White,
+    secondaryContainer = Color(0xFFD4E7FF),
+    onSecondaryContainer = Color(0xFF062B54),
     tertiary = AmberSun,
-    onTertiary = Color.White,
+    onTertiary = Color(0xFF422300),
+    tertiaryContainer = Color(0xFFFFE1B5),
+    onTertiaryContainer = Color(0xFF2B1800),
+    error = Coral,
     background = SlateLight,
     onBackground = InkLight,
     surface = Color(0xFFF8FCFD),
     onSurface = InkLight,
     surfaceVariant = SlateMid,
-    onSurfaceVariant = Color(0xFF425962)
+    onSurfaceVariant = Color(0xFF415963),
+    outline = Color(0xFF6C828D)
 )
 
 @Composable
@@ -60,6 +77,7 @@ fun FinanceAppTheme(
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
+        shapes = FinanceShapes,
         content = content
     )
 }

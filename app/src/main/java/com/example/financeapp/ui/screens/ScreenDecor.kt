@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -25,9 +26,10 @@ fun FinanceScreenBackground(
     val colors = MaterialTheme.colorScheme
     val brush = Brush.verticalGradient(
         colors = listOf(
-            colors.primaryContainer.copy(alpha = 0.32f),
+            colors.primaryContainer.copy(alpha = 0.35f),
             colors.background,
-            colors.secondaryContainer.copy(alpha = 0.28f)
+            colors.tertiaryContainer.copy(alpha = 0.22f),
+            colors.secondaryContainer.copy(alpha = 0.3f)
         )
     )
 
@@ -47,13 +49,13 @@ fun SoftBadge(
     Surface(
         modifier = modifier,
         color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.8f),
-        shape = RoundedCornerShape(50)
+        shape = CircleShape
     ) {
         Text(
             text = text,
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSecondaryContainer,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
         )
     }
 }
