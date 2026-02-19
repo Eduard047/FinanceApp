@@ -26,6 +26,7 @@ captures/
 *.jks
 *.keystore
 keystore.properties
+keystore/
 
 # Logs
 *.log

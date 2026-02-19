@@ -64,6 +64,51 @@ On Windows:
 gradlew.bat :app:assembleDebug
 ```
 
+## Update Without Reinstall
+
+If you already installed the app and have local data, update using the same package/signature:
+
+```bash
+adb install -r app-debug.apk
+```
+
+For convenience, use the helper script that builds a debug APK with an auto-incrementing `versionCode` and copies it to project root:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\build-update-apk.ps1
+```
+
+Then install/update:
+
+```bash
+adb install -r app-debug.apk
+```
+
+Notes:
+- `-r` updates in place and preserves app data.
+- If you install manually from phone file manager, higher `versionCode` is required (the script handles this).
+- If you get `INSTALL_FAILED_UPDATE_INCOMPATIBLE`, the APK is signed with a different key than the installed app.
+
+## Release Signing
+
+The project supports optional release signing via `keystore.properties`.
+
+1. Copy template:
+   - `keystore.properties.example` -> `keystore.properties`
+2. Generate keystore (example):
+
+```bash
+keytool -genkeypair -v -keystore keystore/finance-release.jks -alias finance_release -keyalg RSA -keysize 2048 -validity 10000
+```
+
+3. Build release:
+
+```bash
+./gradlew :app:assembleRelease
+```
+
+If `keystore.properties` is absent, local release build falls back to debug signing for easier personal updates.
+
 ## Notes
 
 - App data is stored locally in Room.
