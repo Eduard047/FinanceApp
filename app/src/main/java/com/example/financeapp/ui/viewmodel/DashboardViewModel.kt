@@ -6,11 +6,19 @@ import androidx.lifecycle.viewModelScope
 import com.example.financeapp.data.entity.CreditAccountEntity
 import com.example.financeapp.data.repository.CreditRepository
 import com.example.financeapp.data.repository.FinanceRepository
-import com.example.financeapp.domain.currentMonthRange
+import com.example.financeapp.domain.MonthSelection
+import com.example.financeapp.domain.currentMonthSelection
+import com.example.financeapp.domain.monthRange
+import com.example.financeapp.domain.shiftMonth
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 
 data class DashboardUiState(
     val monthlyIncome: Double = 0.0,
@@ -19,29 +27,53 @@ data class DashboardUiState(
     val activeCredits: List<CreditAccountEntity> = emptyList()
 )
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class DashboardViewModel(
     financeRepository: FinanceRepository,
     creditRepository: CreditRepository
 ) : ViewModel() {
-    private val monthRange = currentMonthRange()
+    private val _selectedMonth = MutableStateFlow(currentMonthSelection())
+    val selectedMonth: StateFlow<MonthSelection> = _selectedMonth.asStateFlow()
 
-    val uiState: StateFlow<DashboardUiState> = combine(
-        financeRepository.getMonthlyIncomeSum(monthRange.start, monthRange.end),
-        financeRepository.getMonthlyExpenseSum(monthRange.start, monthRange.end),
-        creditRepository.getCreditDebtSummary(),
-        creditRepository.getActiveCredits()
-    ) { income, expenses, debt, activeCredits ->
-        DashboardUiState(
-            monthlyIncome = income,
-            monthlyExpenses = expenses,
-            totalRemainingDebt = debt,
-            activeCredits = activeCredits
+    val uiState: StateFlow<DashboardUiState> = selectedMonth
+        .flatMapLatest { selectedMonth ->
+            val monthRange = monthRange(selectedMonth)
+            combine(
+                financeRepository.getMonthlyIncomeSum(monthRange.start, monthRange.end),
+                financeRepository.getMonthlyExpenseSum(monthRange.start, monthRange.end),
+                creditRepository.getCreditDebtSummary(),
+                creditRepository.getActiveCredits()
+            ) { income, expenses, debt, activeCredits ->
+                DashboardUiState(
+                    monthlyIncome = income,
+                    monthlyExpenses = expenses,
+                    totalRemainingDebt = debt,
+                    activeCredits = activeCredits
+                )
+            }
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = DashboardUiState()
         )
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = DashboardUiState()
-    )
+
+    fun selectPreviousMonth() {
+        _selectedMonth.update { shiftMonth(it, -1) }
+    }
+
+    fun selectNextMonth() {
+        _selectedMonth.update { shiftMonth(it, 1) }
+    }
+
+    fun resetToCurrentMonth() {
+        _selectedMonth.value = currentMonthSelection()
+    }
+
+    fun isCurrentMonthSelected(): Boolean {
+        val current = currentMonthSelection()
+        val selected = _selectedMonth.value
+        return current.year == selected.year && current.month == selected.month
+    }
 }
 
 class DashboardViewModelFactory(

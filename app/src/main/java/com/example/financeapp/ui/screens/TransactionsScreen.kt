@@ -37,6 +37,11 @@ import com.example.financeapp.ui.viewmodel.TransactionListItem
 @Composable
 fun TransactionsScreen(
     transactions: List<TransactionListItem>,
+    monthLabel: String,
+    isCurrentMonth: Boolean,
+    onPreviousMonth: () -> Unit,
+    onNextMonth: () -> Unit,
+    onResetToCurrentMonth: () -> Unit,
     onAddTransaction: () -> Unit,
     onDeleteTransaction: (Long) -> Unit,
     canUndoDelete: Boolean,
@@ -98,18 +103,19 @@ fun TransactionsScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(text = tr("Операції", "Transactions"), style = MaterialTheme.typography.headlineMedium)
-                    Text(
-                        text = tr("Поточний місяць", "Current month"),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                Text(text = tr("Операції", "Transactions"), style = MaterialTheme.typography.headlineMedium)
                 FilledTonalButton(onClick = onAddTransaction) {
                     Text(text = tr("Додати", "Add"))
                 }
             }
+
+            MonthSwitcher(
+                monthLabel = monthLabel,
+                isCurrentMonth = isCurrentMonth,
+                onPreviousMonth = onPreviousMonth,
+                onNextMonth = onNextMonth,
+                onResetToCurrentMonth = onResetToCurrentMonth
+            )
 
             AnimatedVisibility(
                 visible = reveal,

@@ -2,6 +2,7 @@
 
 import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -40,8 +41,10 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.financeapp.data.repository.CreditRepository
 import com.example.financeapp.data.repository.FinanceRepository
+import com.example.financeapp.domain.formatMonthYear
 import com.example.financeapp.ui.localization.AppLanguage
 import com.example.financeapp.ui.localization.LocalAppLanguage
+import com.example.financeapp.ui.localization.currentAppLocale
 import com.example.financeapp.ui.localization.tr
 import com.example.financeapp.ui.screens.AddCreditScreen
 import com.example.financeapp.ui.screens.AddTransactionScreen
@@ -95,28 +98,30 @@ fun FinanceNavGraph(
                         .padding(horizontal = 12.dp, vertical = 4.dp),
                     horizontalArrangement = Arrangement.End
                 ) {
-                    TextButton(onClick = { languageMenuExpanded = true }) {
-                        Text(text = if (appLanguage == AppLanguage.UK) "UKR" else "ENG")
-                    }
+                    Box {
+                        TextButton(onClick = { languageMenuExpanded = true }) {
+                            Text(text = if (appLanguage == AppLanguage.UK) "UKR" else "ENG")
+                        }
 
-                    DropdownMenu(
-                        expanded = languageMenuExpanded,
-                        onDismissRequest = { languageMenuExpanded = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text(text = tr("Українська", "Ukrainian")) },
-                            onClick = {
-                                appLanguage = AppLanguage.UK
-                                languageMenuExpanded = false
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text(text = tr("Англійська", "English")) },
-                            onClick = {
-                                appLanguage = AppLanguage.EN
-                                languageMenuExpanded = false
-                            }
-                        )
+                        DropdownMenu(
+                            expanded = languageMenuExpanded,
+                            onDismissRequest = { languageMenuExpanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(text = tr("Українська", "Ukrainian")) },
+                                onClick = {
+                                    appLanguage = AppLanguage.UK
+                                    languageMenuExpanded = false
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text(text = tr("Англійська", "English")) },
+                                onClick = {
+                                    appLanguage = AppLanguage.EN
+                                    languageMenuExpanded = false
+                                }
+                            )
+                        }
                     }
                 }
             },
@@ -177,9 +182,16 @@ fun FinanceNavGraph(
                         factory = DashboardViewModelFactory(financeRepository, creditRepository)
                     )
                     val uiState by dashboardViewModel.uiState.collectAsState()
+                    val selectedMonth by dashboardViewModel.selectedMonth.collectAsState()
+                    val monthLabel = formatMonthYear(selectedMonth, currentAppLocale())
 
                     DashboardScreen(
                         uiState = uiState,
+                        monthLabel = monthLabel,
+                        isCurrentMonth = dashboardViewModel.isCurrentMonthSelected(),
+                        onPreviousMonth = dashboardViewModel::selectPreviousMonth,
+                        onNextMonth = dashboardViewModel::selectNextMonth,
+                        onResetToCurrentMonth = dashboardViewModel::resetToCurrentMonth,
                         onAddTransaction = { navController.navigate(FinanceDestination.AddTransaction.route) },
                         onAddCredit = { navController.navigate(FinanceDestination.AddCredit.route) },
                         onCreditClick = { creditId ->
@@ -194,9 +206,16 @@ fun FinanceNavGraph(
                     )
                     val transactions by transactionViewModel.transactions.collectAsState()
                     val canUndoDelete by transactionViewModel.canUndoDelete.collectAsState()
+                    val selectedMonth by transactionViewModel.selectedMonth.collectAsState()
+                    val monthLabel = formatMonthYear(selectedMonth, currentAppLocale())
 
                     TransactionsScreen(
                         transactions = transactions,
+                        monthLabel = monthLabel,
+                        isCurrentMonth = transactionViewModel.isCurrentMonthSelected(),
+                        onPreviousMonth = transactionViewModel::selectPreviousMonth,
+                        onNextMonth = transactionViewModel::selectNextMonth,
+                        onResetToCurrentMonth = transactionViewModel::resetToCurrentMonth,
                         onAddTransaction = { navController.navigate(FinanceDestination.AddTransaction.route) },
                         onDeleteTransaction = transactionViewModel::deleteTransaction,
                         canUndoDelete = canUndoDelete,

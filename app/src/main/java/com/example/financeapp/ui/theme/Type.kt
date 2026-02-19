@@ -9,9 +9,9 @@ import androidx.compose.ui.unit.sp
 import com.example.financeapp.R
 
 private val HeadlineFont = FontFamily(
-    Font(R.font.unbounded_variable, weight = FontWeight.SemiBold),
-    Font(R.font.unbounded_variable, weight = FontWeight.Bold),
-    Font(R.font.unbounded_variable, weight = FontWeight.ExtraBold)
+    Font(R.font.manrope_variable, weight = FontWeight.SemiBold),
+    Font(R.font.manrope_variable, weight = FontWeight.Bold),
+    Font(R.font.manrope_variable, weight = FontWeight.ExtraBold)
 )
 
 private val BodyFont = FontFamily(
@@ -27,14 +27,14 @@ val Typography = Typography(
         fontWeight = FontWeight.ExtraBold,
         fontSize = 34.sp,
         lineHeight = 40.sp,
-        letterSpacing = (-0.4).sp
+        letterSpacing = 0.sp
     ),
     headlineMedium = TextStyle(
         fontFamily = HeadlineFont,
         fontWeight = FontWeight.Bold,
-        fontSize = 30.sp,
-        lineHeight = 36.sp,
-        letterSpacing = (-0.25).sp
+        fontSize = 32.sp,
+        lineHeight = 38.sp,
+        letterSpacing = 0.sp
     ),
     titleLarge = TextStyle(
         fontFamily = BodyFont,

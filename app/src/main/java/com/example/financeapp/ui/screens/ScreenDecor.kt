@@ -1,12 +1,18 @@
 ﻿package com.example.financeapp.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -57,6 +63,56 @@ fun SoftBadge(
             color = MaterialTheme.colorScheme.onSecondaryContainer,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
         )
+    }
+}
+
+@Composable
+fun MonthSwitcher(
+    monthLabel: String,
+    isCurrentMonth: Boolean,
+    onPreviousMonth: () -> Unit,
+    onNextMonth: () -> Unit,
+    onResetToCurrentMonth: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedButton(
+                onClick = onPreviousMonth
+            ) {
+                Text(text = "‹")
+            }
+
+            FilledTonalButton(
+                onClick = onResetToCurrentMonth,
+                modifier = Modifier.weight(1f),
+                enabled = !isCurrentMonth
+            ) {
+                Text(text = monthLabel)
+            }
+
+            OutlinedButton(
+                onClick = onNextMonth
+            ) {
+                Text(text = "›")
+            }
+        }
+
+        if (isCurrentMonth) {
+            SoftBadge(text = tr("Поточний місяць", "Current month"))
+        } else {
+            Text(
+                text = tr("Натисніть на місяць, щоб повернутись до поточного", "Tap month to return to current"),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 

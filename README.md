@@ -5,7 +5,8 @@ A modern Android finance tracker built with **Kotlin**, **Jetpack Compose**, **M
 ## Features
 
 - Dashboard with monthly income, expenses, net balance, and active credit debt.
-- Transactions by current month.
+- Dashboard and transactions can be browsed month-by-month (previous/next month selector).
+- Transactions by selected month.
 - Add / delete transactions.
 - Undo last deleted transaction.
 - Category management from the transaction form:

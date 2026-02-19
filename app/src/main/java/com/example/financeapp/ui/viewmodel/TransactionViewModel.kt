@@ -9,12 +9,17 @@ import com.example.financeapp.data.entity.TransactionEntity
 import com.example.financeapp.data.entity.TransactionType
 import com.example.financeapp.data.repository.CategoryMutationResult
 import com.example.financeapp.data.repository.FinanceRepository
-import com.example.financeapp.domain.currentMonthRange
+import com.example.financeapp.domain.MonthSelection
+import com.example.financeapp.domain.currentMonthSelection
+import com.example.financeapp.domain.monthRange
+import com.example.financeapp.domain.shiftMonth
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -41,10 +46,13 @@ data class CategoryActionState(
     val isError: Boolean = false
 )
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class TransactionViewModel(
     private val financeRepository: FinanceRepository
 ) : ViewModel() {
-    private val monthRange = currentMonthRange()
+    private val _selectedMonth = MutableStateFlow(currentMonthSelection())
+    val selectedMonth: StateFlow<MonthSelection> = _selectedMonth.asStateFlow()
+
     private var lastDeletedTransaction: TransactionEntity? = null
 
     private val _formState = MutableStateFlow(AddTransactionFormState())
@@ -79,27 +87,31 @@ class TransactionViewModel(
         initialValue = emptyList()
     )
 
-    val transactions: StateFlow<List<TransactionListItem>> = combine(
-        financeRepository.getTransactionsByMonth(monthRange.start, monthRange.end),
-        categories
-    ) { transactionList, categoryList ->
-        val categoryNames = categoryList.associate { it.id to it.name }
+    val transactions: StateFlow<List<TransactionListItem>> = selectedMonth
+        .flatMapLatest { selectedMonth ->
+            val monthRange = monthRange(selectedMonth)
+            combine(
+                financeRepository.getTransactionsByMonth(monthRange.start, monthRange.end),
+                categories
+            ) { transactionList, categoryList ->
+                val categoryNames = categoryList.associate { it.id to it.name }
 
-        transactionList.map { transaction ->
-            TransactionListItem(
-                id = transaction.id,
-                amount = transaction.amount,
-                date = transaction.date,
-                categoryName = categoryNames[transaction.categoryId] ?: "—",
-                type = transaction.type,
-                note = transaction.note
-            )
-        }
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = emptyList()
-    )
+                transactionList.map { transaction ->
+                    TransactionListItem(
+                        id = transaction.id,
+                        amount = transaction.amount,
+                        date = transaction.date,
+                        categoryName = categoryNames[transaction.categoryId] ?: "—",
+                        type = transaction.type,
+                        note = transaction.note
+                    )
+                }
+            }
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyList()
+        )
 
     init {
         viewModelScope.launch {
@@ -255,6 +267,24 @@ class TransactionViewModel(
 
     fun clearCategoryActionMessage() {
         _categoryActionState.value = CategoryActionState()
+    }
+
+    fun selectPreviousMonth() {
+        _selectedMonth.update { shiftMonth(it, -1) }
+    }
+
+    fun selectNextMonth() {
+        _selectedMonth.update { shiftMonth(it, 1) }
+    }
+
+    fun resetToCurrentMonth() {
+        _selectedMonth.value = currentMonthSelection()
+    }
+
+    fun isCurrentMonthSelected(): Boolean {
+        val current = currentMonthSelection()
+        val selected = _selectedMonth.value
+        return current.year == selected.year && current.month == selected.month
     }
 
     private fun formTypeToCategoryType(type: TransactionType): CategoryType {
